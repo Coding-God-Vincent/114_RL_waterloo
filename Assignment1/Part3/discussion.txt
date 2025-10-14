@@ -1,0 +1,15 @@
+Q: Explain the impact of the target network and relate the target network to value Iteration
+1. Impact of the target network :
+一般來說 target network 是用來穩定學習的。
+* duration = 1，target network 相當於沒有作用，學習過程會比較不穩定。
+* duration = 10，學習成果最佳，可以看出此時 target network 提供了足夠的穩定性，同時又能跟得上 Q 網路的學習速度。
+* duration = 50，同步太慢，target network 落後太多，拖慢學習速度。
+* duration = 100，target network 嚴重過時，基本上根本沒學到啥，因此累積回報最低。
+2. relate the target network to value Iteration : 
+target network 就相當於 value Iteration 中用來更新當前價值的上一輪的價值。
+
+Q: Explain the impact of the replay buffer and relate the replay buffer to exact gradient descent.
+1. Impact of the replay buffer
+1.1 Replay buffer 是用來達成 i.i.d. 的，因為從環境汲取的資料通常高度相關，若直接使用會造成梯度估計有偏差，透過 Replay buffer 隨機抽樣出樣本可以近似 i.i.d.。
+1.2 提升數據利用率，使得經驗可以重複利用。
+2. 我們在理想情況下希望可以使用真實準確的梯度來做梯度下降，但在實務上沒辦法算出準確的梯度。而當 batch size 越大，我們取樣出的估計梯度就會越接近真實的梯度，若我們使用小 batch，那就相當於在做 SGD，噪聲大。

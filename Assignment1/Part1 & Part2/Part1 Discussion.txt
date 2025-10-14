@@ -1,0 +1,3 @@
+1. Modified Policy Iteration 之中，越少的 nEvalIterations，所需的 nIteration 數越多
+2. Policy Iteration 是 Modified Policy Iteration 中的特例，每一次 PE 都完整的解出 BE，故所需的 nIteration 最少
+3. Value Iteration 也是 Modified Policy Iteration 中的特例，每一個 PE 都只迭代一次，故所需的 nIteration 最多

@@ -1,0 +1,15 @@
+由 Avg_Cumulative_reward.png 可以看出 epsilon = 0.05 和 0.3 效果 > 0.1 > 0.5。
+
+About Cumulative Discounted Rewards: 
+原因是因為當後期 Q-Table 中 Q 值得估計已經越發準確時，epsilon 大的仍然會有更大的機會去隨機亂選，因此有更大的機會去選到 reward 低的動作。
+而 epsilon 小的風險為探索不夠完全，但本例中每一個 episode 所走的步數已經夠多，故即使 epsilon 小也能夠探索完全。
+
+About Q-values:
+epsilon 過小: 幾乎會是 Greedy Policy，若初期估計不準確可能會導致 Q 值收斂到錯誤的 Q 值。
+epsilon 過大: 雖探索充分，但因為較大的機率選到隨機的策略，所以更新 Q 值得效率很低，收斂較慢。
+
+About Policy: 
+epsilon 過小: 幾乎就是 Greedy Policy。
+epsilon 過大: 幾乎就是隨機亂選。
+
+
