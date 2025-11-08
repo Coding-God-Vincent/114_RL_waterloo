@@ -1,1 +1,0 @@
-在 CartPole 環境中，在 Pole 掉下來之前的每一個時間步都會得到 reward = 1，這讓 Agent 知道 "撐越久獎勵越多"。而在 Mountain Car 環境中，在到達山頂之前只會得到 reward = -1，因此在初期，若探索不完全，則每一個 episode 的 total return 幾乎都是 -200，根本沒有學習訊號，Agent 根本不知道要往哪邊調整參數，故訓練不起來。
