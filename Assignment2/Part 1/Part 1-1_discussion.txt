@@ -1,0 +1,5 @@
+* model-based RL : 
+    因為其會根據現有觀測到的經驗，反覆推測出當前最佳的 V 值 & Q 值，再根據此值 induced 出 Policy，因此可以看出相較於 q-learning 能較快取得較高的 reward。
+* q-learning : 
+    當前觀測到的經驗只用到一次 (樣本效率較 model-based RL 低)，因此需要經過多次互動後才能推出較準確的 Q 值 & 其 Policy。故相較於 Model-based RL 慢得到較高的 reward。
+    雖然 q-learning 較 model-based RL 慢取得較高的 reward，但再經過多次與環境的互動後最終也能得出近似最優的策略。

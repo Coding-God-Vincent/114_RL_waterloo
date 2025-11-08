@@ -1,0 +1,11 @@
+1. REINFORCE、REINFORCE with a Baseline、PPO 三者結果比較 :   
+由結果可以看出三種演算法皆有成功訓練並達到趨近於最佳的效能。  
+
+* REINFORCE 較慢收斂，這是由於其直接使用與環境所得的 return，這種隨機性高的東西進行訓練，導致梯度的估計 Variance 大，使得收斂過程不穩定，進而導致收斂速度較慢。  
+
+* REINFORCE with a Baseline 收斂速度介於其他兩者之間。這是由於其是利用 "比平均好多少" 來訓練而非像 REINFORCE 一樣直接使用 return 來訓練。這使得策略更新更穩定，進而導致收斂速度較快。  
+
+* PPO 因為其限制每一次策略更新的幅度的特性，因此其收斂的過程是最穩定的，也因此他有最快的收斂速度。  
+
+2. REINFORCE 中 POLICY_TRAIN_ITERS 分別設為 1 & 10 的結果觀察 :     
+POLICY_TRAIN_ITERS = 10 的版本會使得一個 trajectory 被用來訓練 10 次。由結果所示，可以看出這個版本會較 POLICY_TRAIN_ITERS = 1 的版本更快的收斂並且達到最高的獎勵。這是由於樣本利用率高的原因。但我認為 POLICY_TRAIN_ITERS 若設太大會導致 overfitting，因此要小心設定這個值以達到更好的效能。

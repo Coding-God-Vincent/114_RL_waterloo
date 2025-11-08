@@ -1,0 +1,17 @@
+實驗結果顯示：thompson sampling > UCB sampling > epsilon-greedy
+我認為符合預期。
+
+* thompson sampling : 
+    * 根據現有知識選擇探索的對象。ex : 樣本多價值低，幾乎不會選到。樣本少價值高，會有高機率被選到。不像 epsilon-greedy 是隨機亂選，不會利用現有的知道來選擇動作。
+    * 採用慢慢修改後驗分佈的方式，因此平滑穩定。
+    因此推論會是三者中最好。
+
+* UCB sampling :
+    * 跟 thompson sampling 一樣有利用現有知識探索。
+    * 為每個 arm 加上一個探索項並搭配一個常數控制。該參數的設定敏感，若太大，浪費機會、太小則容易陷入局部最佳。
+    因此推論會比 thompson sampling 差，但比 epsilon-greedy 好。
+
+* epsilon-greedy : 
+    * 探索完全隨機，沒有利用現有的知識來探索。就算很差的動作也與很好的動作有一樣的機率會被選到。
+    * epsilon 也是敏感的超參數。
+    因此推論會是三者中最差。

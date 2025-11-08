@@ -1,0 +1,9 @@
+* About reward curves : 
+    * REINFORCE 因為直接使用 return 這種隨機性大的數值來進行更新，因此訓練過程較不穩定。  
+    * REINFORCE with a Baseline 使用 Baseline 降低 return 的隨機性，使得訓練過程較穩定。
+    * PPO 使用 clamp 限縮前後兩個策略的更新幅度，大幅降低訓練過程的不穩定性，進而大幅提升收斂速度。
+
+* About height : 
+    * REINFORCE 大約到 -90 的地方，REINFORCE with a Baseline 大約到 -75，而 PPO 也到大約 -75。
+    但 PPO 只花 150 Episodes 就到達這個效能而且根據結果圖仍然在上升。其餘演算法花了 800 個 Episodes。
+    因此，到達高度大小為 : PPO > REINFORCE with a Baseline > REINFORCE。
