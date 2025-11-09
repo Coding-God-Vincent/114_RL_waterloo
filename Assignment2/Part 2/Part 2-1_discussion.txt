@@ -8,4 +8,5 @@
 * PPO 因為其限制每一次策略更新的幅度的特性，因此其收斂的過程是最穩定的，也因此他有最快的收斂速度。  
 
 2. REINFORCE 中 POLICY_TRAIN_ITERS 分別設為 1 & 10 的結果觀察 :     
-POLICY_TRAIN_ITERS = 10 的版本會使得一個 trajectory 被用來訓練 10 次。由結果所示，可以看出這個版本會較 POLICY_TRAIN_ITERS = 1 的版本更快的收斂並且達到最高的獎勵。這是由於樣本利用率高的原因。但我認為 POLICY_TRAIN_ITERS 若設太大會導致 overfitting，因此要小心設定這個值以達到更好的效能。
+POLICY_TRAIN_ITERS = 10 的版本會使得一個 trajectory 被用來訓練 10 次。
+由結果所示，可以看出這個版本會導致訓練失敗。原因是因拿為前幾次學習到的新策略去學舊策略的東西，導致學不起來。若要像這樣訓練多次則要像 PPO 一樣使用 Importance Sampling 的技巧去校正。
