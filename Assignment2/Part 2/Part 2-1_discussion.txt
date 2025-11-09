@@ -10,3 +10,6 @@
 2. REINFORCE 中 POLICY_TRAIN_ITERS 分別設為 1 & 10 的結果觀察 :     
 POLICY_TRAIN_ITERS = 10 的版本會使得一個 trajectory 被用來訓練 10 次。
 由結果所示，可以看出這個版本會導致訓練失敗。原因是因拿為前幾次學習到的新策略去學舊策略的東西，導致學不起來。若要像這樣訓練多次則要像 PPO 一樣使用 Importance Sampling 的技巧去校正。
+
+補充 : 多做一個將每個 trajectory 訓練 4 次的 PPO。
+發現訓練多次的 PPO (65 episodes) 較只訓練一次的 PPO (150 episodes) 快收斂。且因為透過 IS，PPO 並沒有像 REINFORCE 一樣出現訓練失敗的情況發生。
