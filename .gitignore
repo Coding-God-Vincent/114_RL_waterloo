@@ -1,0 +1,11 @@
+# 虛擬環境
+# 忽略名為 'HW_venv' 的資料夾
+HW_venv/
+
+# Python 快取
+# 忽略所有名為 '__pycache__' 的資料夾
+__pycache__/
+
+# 額外的通用忽略項（建議包含）
+*.pyc      # 忽略編譯後的 Python 檔案
+.DS_Store  # 忽略 macOS 系統檔案

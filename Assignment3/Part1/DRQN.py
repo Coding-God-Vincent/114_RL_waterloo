@@ -1,10 +1,11 @@
-import gym
 import numpy as np
 import utils.envs, utils.seed, utils.buffers, utils.torch
 import torch
+import torch.nn as nn
 import tqdm
 import matplotlib.pyplot as plt
 import warnings
+import random
 warnings.filterwarnings("ignore")
 
 # Deep Recurrent Q Learning
@@ -12,7 +13,8 @@ warnings.filterwarnings("ignore")
 # cs.uwaterloo.ca/~ppoupart/teaching/cs885-winter22/slides/cs885-module4.pdf
 
 # Constants
-SEEDS = [1, 2, 3, 4, 5]
+# SEEDS = [1, 2, 3, 4, 5]
+SEEDS = [1]
 t = utils.torch.TorchHelper()
 DEVICE = t.device
 OBS_N = 2               # State space size
@@ -20,15 +22,15 @@ ACT_N = 2               # Action space size
 STARTING_EPSILON = 1.0  # Starting epsilon
 STEPS_MAX = 10000       # Gradually reduce epsilon over these many steps
 EPSILON_END = 0.1       # At the end, keep epsilon at this value
-MINIBATCH_SIZE = 64     # How many examples to sample per train step
-GAMMA = 0.99            # Discount factor in episodic reward objective
+MINIBATCH_SIZE = 15     # How many examples to sample per train step
+GAMMA = 0.95            # Discount factor in episodic reward objective
 LEARNING_RATE = 5e-4    # Learning rate for Adam optimizer
-TRAIN_AFTER_EPISODES = 10   # Just collect episodes for these many episodes
-TRAIN_EPOCHS = 25        # Train for these many epochs every time
+TRAIN_AFTER_EPISODES = 100   # episodes used to warm-up
+TRAIN_EPOCHS = 6        # Train for these many epochs every time
 BUFSIZE = 10000         # Replay buffer size
 EPISODES = 2000         # Total number of episodes to learn over
 TEST_EPISODES = 10      # Test episodes
-HIDDEN = 512            # Hidden nodes
+HIDDEN = 256            # Hidden nodes
 TARGET_NETWORK_UPDATE_FREQ = 10 # Target network update frequency
 
 # Global variables
@@ -40,11 +42,24 @@ class DRQN(torch.nn.Module):
     
     def __init__(self):
         super().__init__()
-        ## TODO: Create layers of DRQN
+        self.obs_extractor = nn.Linear(in_features= OBS_N, out_features= HIDDEN, dtype= torch.float32)
+        self.lstm = nn.LSTM(input_size= HIDDEN, hidden_size= HIDDEN, batch_first= True)
+        self.Q_network = nn.Linear(in_features= HIDDEN, out_features= ACT_N)
     
+    # Sequence Length : T, length of an episode
+    # x : current observation with shape (batch_size, Sequence_Length, OBS_N)
+    # hidden : initial hidden state (h_0, c_0), shape ((1, batch_size, HIDDEN), (1, batch_size, HIDDEN))
+    # return q_values with shape (batch_size * Sequence_Length, ACT_N)
     def forward(self, x, hidden):
-        ## TODO: Forward pass
-        pass
+        # shape (batch_size, Sequence_Length, HIDDEN)
+        extracted_obs = self.obs_extractor(x)
+        # output: h0, h1, ..., h_(Sequence_Length), shape (batch_size, Sequence_Length, HIDDEN)
+        # h_n, c_n: shape (1, batch_size, HIDDEN)
+        output, (h_n, c_n) = self.lstm(extracted_obs, hidden)
+        # shape (batch_size, Sequence_Length, ACT_N)
+        Q_values = self.Q_network(output)
+        return Q_values, (h_n, c_n)
+
 
 # Create environment
 # Create replay buffer
@@ -54,10 +69,10 @@ class DRQN(torch.nn.Module):
 def create_everything(seed):
     utils.seed.seed(seed)
     env = utils.envs.TimeLimit(utils.envs.PartiallyObservableCartPole(), 200)
-    env.seed(seed)
+    # env.seed(seed)
     test_env = utils.envs.TimeLimit(utils.envs.PartiallyObservableCartPole(), 200)
-    test_env.seed(seed)
-    buf = utils.buffers.ReplayBuffer(BUFSIZE, recurrent=True)
+    # test_env.seed(seed)
+    buf = utils.buffers.ReplayBuffer(BUFSIZE)
     Q = DRQN().to(DEVICE)
     Qt = DRQN().to(DEVICE)
     OPT = torch.optim.Adam(Q.parameters(), lr = LEARNING_RATE)
@@ -65,31 +80,100 @@ def create_everything(seed):
 
 # Create epsilon-greedy policy
 # TODO: Adjust this policy to handle hidden states?
-def policy(env, obs):
+# obs: np.array with shape (2)
+# h, c: hidden state & cell state of the previous time, shape (1, 1, HIDDEN)
+def policy(env, obs, h, c):
 
-    global EPSILON, EPSILON_END, STEPS_MAX
-    obs = t.f(obs).view(-1, OBS_N)  # Convert to torch tensor
-
+    global EPSILON, EPSILON_END, STEPS_MAX, Q
+    obs = t.f(obs).reshape(1, 1, OBS_N)  # Convert to torch tensor, shape (1, 1, OBS_N)
+    # Q_values of the current obs with shape (1, 1, ACT_N)
+    with torch.no_grad():
+        Q_value, (h_n, c_n) = Q(obs, (h, c))
     # With probability EPSILON, choose a random action
     # Rest of the time, choose argmax_a Q(s, a) 
     if np.random.rand() < EPSILON:
-        action = np.random.randint(ACT_N)
+        action = np.random.randint(ACT_N)  # pure int
     else:
-        ## TODO: Implement greedy policy
-        pass
+        action = torch.argmax(Q_value, dim= 2).item()  # pure int
     
     # Epsilon update rule: Keep reducing a small amount over
     # STEPS_MAX number of steps, and at the end, fix to EPSILON_END
     EPSILON = max(EPSILON_END, EPSILON - (1.0 / STEPS_MAX))
     
-    return action
+    return action, (h_n, c_n)
 
 
 # Update networks
 def update_networks(epi, buf, Q, Qt, OPT):
-    
+    losses = []
     loss = 0.
-    ## TODO: Implement this function
+    # S.shape = (batch_size, Sequence_Length, OBS_N)
+    # A.shape = (batch_size, Sequence_Length)
+    # R.shape = (batch_size, Sequence_Length)
+    # S2.shape = (batch_size, Sequence_Length, OBS_N)
+    # D.shape = (batch_size, Sequence_Length)
+    S_, A_, R_, S2_, D_ = buf.sample(n= MINIBATCH_SIZE, t= t)
+    
+    Sequence_Length = 10
+
+    # update by 1 episode at a time
+    for i in range(MINIBATCH_SIZE):
+        if (len(S_[i]) > Sequence_Length):
+            T_start = random.randint(0, len(S_[i])-Sequence_Length)
+            T_end = T_start + Sequence_Length
+        else: 
+            T_start = 0
+            T_end = len(S_[i])
+        # shape (1, Sequence_Length, OBS_N)
+        S = torch.tensor(S_[i][T_start : T_end], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+        # shape (1, Sequence_Length)
+        A = torch.tensor(A_[i][T_start : T_end], dtype= torch.long, device= DEVICE).unsqueeze(dim= 0)
+        # shape (1, Sequence_Length)
+        R = torch.tensor(R_[i][T_start : T_end], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+        # shape (1, Sequence_Length, OBS_N)
+        S2 = torch.tensor(S2_[i][T_start : T_end], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+        # shape (1, Sequence_Length)
+        D = torch.tensor(D_[i][T_start : T_end], dtype= torch.int32, device= DEVICE).unsqueeze(dim= 0)
+        
+        # S = torch.tensor(S_[i], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+        # # shape (1, Sequence_Length)
+        # A = torch.tensor(A_[i], dtype= torch.long, device= DEVICE).unsqueeze(dim= 0)
+        # # shape (1, Sequence_Length)
+        # R = torch.tensor(R_[i], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+        # # shape (1, Sequence_Length, OBS_N)
+        # S2 = torch.tensor(S2_[i], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+        # # shape (1, Sequence_Length)
+        # D = torch.tensor(D_[i], dtype= torch.int32, device= DEVICE).unsqueeze(dim= 0)
+
+        batch_size, Sequence_Length, OBS_N = S.shape
+        h_init = torch.zeros(size= (1, batch_size, HIDDEN), dtype= torch.float32, device= DEVICE)
+        c_init = torch.zeros(size= (1, batch_size, HIDDEN), dtype= torch.float32, device= DEVICE)
+    
+        # shape = (batch_size, Sequence_Length, ACT_N)
+        Q_values, (h_n, c_n) = Q(S, (h_init, c_init))
+        # shape (batch_size, Sequence_Length, 1) with dtype (torch.long or torch.int64)
+        indices = A.unsqueeze(dim= 2)
+        # shape (batch_size, Sequence_Length)
+        Q_values = Q_values.gather(dim= 2, index= indices).squeeze(dim= 2)
+    
+        # shape = (batch_size, Sequence_Length, ACT_N)
+        with torch.no_grad():
+            Q2_values, (h_n, c_n) = Qt(S2, (h_init, c_init))
+        # shape (batch_size, Sequence_Length)
+        Q2_values = torch.max(Q2_values, dim= 2).values
+        
+        # shape (batch_size, Sequence_Length)
+        targetQ_values = R + GAMMA * Q2_values * (1-D)
+        
+        # shape ()
+        loss = torch.nn.MSELoss()(targetQ_values.detach(), Q_values)  
+        losses.append(loss)
+
+    total_loss = torch.stack(losses).mean()
+    # update network
+    OPT.zero_grad()
+    total_loss.backward()
+    OPT.step()
 
     # Update target network
     if epi%TARGET_NETWORK_UPDATE_FREQ==0:
@@ -162,4 +246,4 @@ if __name__ == "__main__":
     # Plot the curve for the given seeds
     plot_arrays(curves, 'b', 'drqn')
     plt.legend(loc='best')
-    plt.show()
+    plt.savefig('/home/super_trumpet/NCKU/Homework/114-2-DRL/Assignment3/Part1/DRQN_result')

@@ -3,6 +3,13 @@ import numpy as np
 import random
 from copy import deepcopy
 import math
+import logging
+import torch
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+HIDDEN = 256  # hidden_size of LSTM
+
+logger = logging.getLogger(__name__)
 
 # github.com/openai/gym/blob/master/gym/wrappers/time_limit.py
 class TimeLimit(gym.Wrapper):
@@ -37,11 +44,14 @@ class TimeLimit(gym.Wrapper):
 ## TODO: Adjust this function to work with hidden states?
 def play_episode(env, policy, render = False):
     states, actions, rewards = [], [], []
+    # env.reset() : observation (np.array) with shape (2)
     states.append(env.reset())
+    # shape (1, batch_size, HIDDEN)
+    h, c = torch.zeros(size= (1, 1, HIDDEN), dtype= torch.float32, device= device), torch.zeros(size= (1, 1, HIDDEN), dtype= torch.float32, device= device)
     done = False
     if render: env.render()
     while not done:
-        action = policy(env, states[-1])
+        action, (h, c) = policy(env, states[-1], h, c)
         actions.append(action)
         obs, reward, done, info = env.step(action)
         if render: env.render()
@@ -57,15 +67,22 @@ def play_episode(env, policy, render = False):
 ## TODO: Adjust this function to work with hidden states?
 def play_episode_rb(env, policy, buf):
     states, actions, rewards = [], [], []
+    # env.reset() will return current obs. (np.array with shape (2))
     states.append(env.reset())
+    # shape (1, batch_size, HIDDEN)
+    h, c = torch.zeros(size= (1, 1, HIDDEN), dtype= torch.float32, device= device), torch.zeros(size= (1, 1, HIDDEN), dtype= torch.float32, device= device)
+    experience = []
     done = False
     while not done:
-        action = policy(env, states[-1])
+        action, (h, c) = policy(env, states[-1], h, c)
         actions.append(action)
         obs, reward, done, info = env.step(action)
-        buf.add(states[-1], action, reward, obs, done)
+        # buf.add(states[-1], action, reward, obs, done)
         states.append(obs)
         rewards.append(reward)
+        experience.append((states[-1], action, reward, obs, done))  # experience = [exp1, exp2, ...]
+    buf.add(experience)
+    
     return states, actions, rewards
 
 # Partially Observable CartPole-v0 Environment

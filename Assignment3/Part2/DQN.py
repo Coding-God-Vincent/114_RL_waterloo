@@ -1,5 +1,3 @@
-from turtle import update
-import gym
 import numpy as np
 import utils.envs, utils.seed, utils.buffers, utils.torch
 import torch
@@ -44,9 +42,9 @@ Q = None
 def create_everything(seed):
     utils.seed.seed(seed)
     env = utils.envs.TimeLimit(utils.envs.NoisyCartPole(), 500)
-    env.seed(seed)
+    # env.seed(seed)
     test_env = utils.envs.TimeLimit(utils.envs.NoisyCartPole(), 500)
-    test_env.seed(seed)
+    # test_env.seed(seed)
     buf = utils.buffers.ReplayBuffer(BUFSIZE)
     Q = torch.nn.Sequential(
         torch.nn.Linear(OBS_N, HIDDEN), torch.nn.ReLU(),
@@ -179,4 +177,4 @@ if __name__ == "__main__":
     # Plot the curve for the given seeds
     plot_arrays(curves, 'b', 'dqn')
     plt.legend(loc='best')
-    plt.show()
+    plt.savefig("/home/super_trumpet/NCKU/Homework/114-2-DRL/Assignment3/Part2/DQN_result")
