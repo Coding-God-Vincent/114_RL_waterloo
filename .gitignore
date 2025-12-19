@@ -9,3 +9,5 @@ __pycache__/
 # 額外的通用忽略項（建議包含）
 *.pyc      # 忽略編譯後的 Python 檔案
 .DS_Store  # 忽略 macOS 系統檔案
+
+test.py
