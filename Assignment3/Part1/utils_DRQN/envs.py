@@ -7,7 +7,7 @@ import logging
 import torch
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-HIDDEN = 256  # hidden_size of LSTM
+HIDDEN = 512  # hidden_size of LSTM
 
 logger = logging.getLogger(__name__)
 

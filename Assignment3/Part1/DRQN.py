@@ -1,5 +1,5 @@
 import numpy as np
-import utils.envs, utils.seed, utils.buffers, utils.torch
+import utils_DRQN.envs, utils_DRQN.seed, utils_DRQN.buffers, utils_DRQN.torch
 import torch
 import torch.nn as nn
 import tqdm
@@ -13,25 +13,24 @@ warnings.filterwarnings("ignore")
 # cs.uwaterloo.ca/~ppoupart/teaching/cs885-winter22/slides/cs885-module4.pdf
 
 # Constants
-# SEEDS = [1, 2, 3, 4, 5]
-SEEDS = [1]
-t = utils.torch.TorchHelper()
+SEEDS = [1, 2, 3, 4, 5]
+t = utils_DRQN.torch.TorchHelper()
 DEVICE = t.device
 OBS_N = 2               # State space size
 ACT_N = 2               # Action space size
 STARTING_EPSILON = 1.0  # Starting epsilon
 STEPS_MAX = 10000       # Gradually reduce epsilon over these many steps
-EPSILON_END = 0.1       # At the end, keep epsilon at this value
-MINIBATCH_SIZE = 15     # How many examples to sample per train step
-GAMMA = 0.95            # Discount factor in episodic reward objective
+EPSILON_END = 0.05       # At the end, keep epsilon at this value
+MINIBATCH_SIZE = 64     # How many examples to sample per train step
+GAMMA = 0.99            # Discount factor in episodic reward objective
 LEARNING_RATE = 5e-4    # Learning rate for Adam optimizer
 TRAIN_AFTER_EPISODES = 100   # episodes used to warm-up
-TRAIN_EPOCHS = 6        # Train for these many epochs every time
+TRAIN_EPOCHS = 5        # Train for these many epochs every time
 BUFSIZE = 10000         # Replay buffer size
 EPISODES = 2000         # Total number of episodes to learn over
 TEST_EPISODES = 10      # Test episodes
-HIDDEN = 256            # Hidden nodes
-TARGET_NETWORK_UPDATE_FREQ = 10 # Target network update frequency
+HIDDEN = 512            # Hidden nodes
+TARGET_NETWORK_UPDATE_FREQ = 50 # Target network update frequency
 
 # Global variables
 EPSILON = STARTING_EPSILON
@@ -67,12 +66,12 @@ class DRQN(torch.nn.Module):
 # Create target network
 # Create optimizer
 def create_everything(seed):
-    utils.seed.seed(seed)
-    env = utils.envs.TimeLimit(utils.envs.PartiallyObservableCartPole(), 200)
+    utils_DRQN.seed.seed(seed)
+    env = utils_DRQN.envs.TimeLimit(utils_DRQN.envs.PartiallyObservableCartPole(), 200)
     # env.seed(seed)
-    test_env = utils.envs.TimeLimit(utils.envs.PartiallyObservableCartPole(), 200)
+    test_env = utils_DRQN.envs.TimeLimit(utils_DRQN.envs.PartiallyObservableCartPole(), 200)
     # test_env.seed(seed)
-    buf = utils.buffers.ReplayBuffer(BUFSIZE)
+    buf = utils_DRQN.buffers.ReplayBuffer(BUFSIZE)
     Q = DRQN().to(DEVICE)
     Qt = DRQN().to(DEVICE)
     OPT = torch.optim.Adam(Q.parameters(), lr = LEARNING_RATE)
@@ -114,36 +113,38 @@ def update_networks(epi, buf, Q, Qt, OPT):
     # D.shape = (batch_size, Sequence_Length)
     S_, A_, R_, S2_, D_ = buf.sample(n= MINIBATCH_SIZE, t= t)
     
-    Sequence_Length = 10
+    # Sequence_Length = 10
 
-    # update by 1 episode at a time
+    # # update by 1 episode at a time
     for i in range(MINIBATCH_SIZE):
-        if (len(S_[i]) > Sequence_Length):
-            T_start = random.randint(0, len(S_[i])-Sequence_Length)
-            T_end = T_start + Sequence_Length
-        else: 
-            T_start = 0
-            T_end = len(S_[i])
-        # shape (1, Sequence_Length, OBS_N)
-        S = torch.tensor(S_[i][T_start : T_end], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
-        # shape (1, Sequence_Length)
-        A = torch.tensor(A_[i][T_start : T_end], dtype= torch.long, device= DEVICE).unsqueeze(dim= 0)
-        # shape (1, Sequence_Length)
-        R = torch.tensor(R_[i][T_start : T_end], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
-        # shape (1, Sequence_Length, OBS_N)
-        S2 = torch.tensor(S2_[i][T_start : T_end], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
-        # shape (1, Sequence_Length)
-        D = torch.tensor(D_[i][T_start : T_end], dtype= torch.int32, device= DEVICE).unsqueeze(dim= 0)
+    #     if (len(S_[i]) > Sequence_Length):
+    #         T_start = random.randint(0, len(S_[i])-Sequence_Length)
+    #         T_end = T_start + Sequence_Length
+    #     else: 
+    #         T_start = 0
+    #         T_end = len(S_[i])
+    #     # shape (1, Sequence_Length, OBS_N)
+    #     S = torch.tensor(S_[i][T_start : T_end], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+    #     # shape (1, Sequence_Length)
+    #     A = torch.tensor(A_[i][T_start : T_end], dtype= torch.long, device= DEVICE).unsqueeze(dim= 0)
+    #     # shape (1, Sequence_Length)
+    #     R = torch.tensor(R_[i][T_start : T_end], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+    #     # shape (1, Sequence_Length, OBS_N)
+    #     S2 = torch.tensor(S2_[i][T_start : T_end], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+    #     # shape (1, Sequence_Length)
+    #     D = torch.tensor(D_[i][T_start : T_end], dtype= torch.int32, device= DEVICE).unsqueeze(dim= 0)
         
-        # S = torch.tensor(S_[i], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
-        # # shape (1, Sequence_Length)
-        # A = torch.tensor(A_[i], dtype= torch.long, device= DEVICE).unsqueeze(dim= 0)
-        # # shape (1, Sequence_Length)
-        # R = torch.tensor(R_[i], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
-        # # shape (1, Sequence_Length, OBS_N)
-        # S2 = torch.tensor(S2_[i], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
-        # # shape (1, Sequence_Length)
-        # D = torch.tensor(D_[i], dtype= torch.int32, device= DEVICE).unsqueeze(dim= 0)
+        S = torch.tensor(S_[i], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+        # shape (1, Sequence_Length)
+        A = torch.tensor(A_[i], dtype= torch.long, device= DEVICE).unsqueeze(dim= 0)
+        # shape (1, Sequence_Length)
+        R = torch.tensor(R_[i], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+        # shape (1, Sequence_Length+1 (0~T), OBS_N)
+        # 若不加上 s0，這樣時間資訊不完整，進而導致訓練失敗
+        # 後面 Qt 輸出再把 s_0 的剪掉
+        S2 = torch.tensor(S_[i] + [S2_[i][-1]], dtype= torch.float32, device= DEVICE).unsqueeze(dim= 0)
+        # shape (1, Sequence_Length)
+        D = torch.tensor(D_[i], dtype= torch.int32, device= DEVICE).unsqueeze(dim= 0)
 
         batch_size, Sequence_Length, OBS_N = S.shape
         h_init = torch.zeros(size= (1, batch_size, HIDDEN), dtype= torch.float32, device= DEVICE)
@@ -156,11 +157,11 @@ def update_networks(epi, buf, Q, Qt, OPT):
         # shape (batch_size, Sequence_Length)
         Q_values = Q_values.gather(dim= 2, index= indices).squeeze(dim= 2)
     
-        # shape = (batch_size, Sequence_Length, ACT_N)
+        # shape = (batch_size, Sequence_Length+1, ACT_N)
         with torch.no_grad():
             Q2_values, (h_n, c_n) = Qt(S2, (h_init, c_init))
         # shape (batch_size, Sequence_Length)
-        Q2_values = torch.max(Q2_values, dim= 2).values
+        Q2_values = torch.max(Q2_values[:, 1:, :], dim= 2).values
         
         # shape (batch_size, Sequence_Length)
         targetQ_values = R + GAMMA * Q2_values * (1-D)
@@ -202,7 +203,7 @@ def train(seed):
     for epi in pbar:
 
         # Play an episode and log episodic reward
-        S, A, R = utils.envs.play_episode_rb(env, policy, buf)
+        S, A, R = utils_DRQN.envs.play_episode_rb(env, policy, buf)
         
         # Train after collecting sufficient experience
         if epi >= TRAIN_AFTER_EPISODES:
@@ -214,7 +215,7 @@ def train(seed):
         # Evaluate for TEST_EPISODES number of episodes
         Rews = []
         for epj in range(TEST_EPISODES):
-            S, A, R = utils.envs.play_episode(test_env, policy, render = False)
+            S, A, R = utils_DRQN.envs.play_episode(test_env, policy, render = False)
             Rews += [sum(R)]
         testRs += [sum(Rews)/TEST_EPISODES]
 

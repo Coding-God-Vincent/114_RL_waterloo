@@ -1,6 +1,6 @@
 # import gym
 import numpy as np
-import utils.envs, utils.seed, utils.buffers, utils.torch
+import utils_DQN.envs, utils_DQN.seed, utils_DQN.buffers, utils_DQN.torch
 import torch
 import tqdm
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 
 # Constants
 SEEDS = [1, 2, 3, 4, 5]
-t = utils.torch.TorchHelper()
+t = utils_DQN.torch.TorchHelper()
 DEVICE = t.device
 OBS_N = 2               # State space size
 ACT_N = 2               # Action space size
@@ -41,12 +41,12 @@ Q = None
 # Create target network
 # Create optimizer
 def create_everything(seed):
-    utils.seed.seed(seed)
-    env = utils.envs.TimeLimit(utils.envs.PartiallyObservableCartPole(), 200)
+    utils_DQN.seed.seed(seed)
+    env = utils_DQN.envs.TimeLimit(utils_DQN.envs.PartiallyObservableCartPole(), 200)
     # env.seed(seed)
-    test_env = utils.envs.TimeLimit(utils.envs.PartiallyObservableCartPole(), 200)
+    test_env = utils_DQN.envs.TimeLimit(utils_DQN.envs.PartiallyObservableCartPole(), 200)
     # test_env.seed(seed)
-    buf = utils.buffers.ReplayBuffer(BUFSIZE)
+    buf = utils_DQN.buffers.ReplayBuffer(BUFSIZE)
     Q = torch.nn.Sequential(
         torch.nn.Linear(OBS_N, HIDDEN), torch.nn.ReLU(),
         torch.nn.Linear(HIDDEN, HIDDEN), torch.nn.ReLU(),
@@ -134,7 +134,7 @@ def train(seed):
     for epi in pbar:
 
         # Play an episode and log episodic reward
-        S, A, R = utils.envs.play_episode_rb(env, policy, buf)
+        S, A, R = utils_DQN.envs.play_episode_rb(env, policy, buf)
         
         # Train after collecting sufficient experience
         if epi >= TRAIN_AFTER_EPISODES:
@@ -146,7 +146,7 @@ def train(seed):
         # Evaluate for TEST_EPISODES number of episodes
         Rews = []
         for epj in range(TEST_EPISODES):
-            S, A, R = utils.envs.play_episode(test_env, policy, render = False)
+            S, A, R = utils_DQN.envs.play_episode(test_env, policy, render = False)
             Rews += [sum(R)]
         testRs += [sum(Rews)/TEST_EPISODES]
 
