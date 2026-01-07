@@ -95,7 +95,7 @@ def train(S,A,returns):
 
     # policy gradient with baseline
     # apply accumulated gradient across the episode
-    for i in range(POLICY_TRAIN_ITERS):
+    for i in range(POLICY_TRAIN_ITERS):  # 即一個 trajectory 更新的次數，PG based 除了 PPO 一定要設為 1
         OPT1.zero_grad()
         OPT2.zero_grad()
         
@@ -107,7 +107,8 @@ def train(S,A,returns):
         # n -> 一個 trajectory 中各 action 所要用的 gamma 的次方數
         n = torch.arange(S.size(0)).to(DEVICE)  # S.size(0) : 0th dimension size of S
         
-        loss_policy = -((returns - values.detach()) * log_probs).sum()
+        # loss_policy = -((returns - values.detach()) * log_probs).sum()
+        loss_policy = -((returns - values.detach()) * log_probs).mean()
         loss_v = torch.pow((values - returns.detach()), 2).sum()
         
         loss_policy.backward()
@@ -168,7 +169,7 @@ plt.plot(range(N), last25Rs, 'b')
 plt.xlabel('Episode')
 plt.ylabel('Reward (averaged over last 25 episodes)')
 plt.title("REINFORCE with Baseline, mode: " + args.mode)
-plt.savefig("/home/super_trumpet/NCKU/Homework/114-2-DRL/Assignment2/Part 2/images/"+args.mode+"/reinforce_baseline-"+args.mode+".png")
+plt.savefig("/home/super_trumpet/NCKU/Homework/114-2-DRL/Assignment2/Part 2/images/"+args.mode+"/reinforce_baseline_mean_actor_loss-"+args.mode+".png")
 print("Episodic reward plot saved!")
 
 # Play test episodes

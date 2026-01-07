@@ -100,7 +100,7 @@ def train(S, A, returns, old_log_probs):
 
     # PPO 
     # gradient ascent for POLICY_TRAIN_ITERS steps
-    for i in range(POLICY_TRAIN_ITERS):
+    for i in range(POLICY_TRAIN_ITERS):  # 這邊訂做 5/10，所以一個筆資料會用來更新 5/10 次
         OPT1.zero_grad()
         OPT2.zero_grad()
         
@@ -108,6 +108,8 @@ def train(S, A, returns, old_log_probs):
         loss_v = torch.pow((returns.detach() - values), 2).sum()
         
         Advantages = returns - values.detach()  # A = Q - V
+        # pi : Actor
+        # 每一次要求 current log probs 時都要過一次當前的 Actor
         log_probs = torch.nn.LogSoftmax(dim=-1)(pi(S)).gather(1, A.view(-1, 1)).view(-1)
         ratio = torch.exp(log_probs - old_log_probs.detach())
         loss_policy = -1/(S.size(0)) * torch.min(
